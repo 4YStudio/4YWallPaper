@@ -1,0 +1,98 @@
+:root {
+  --bg-0: #12141c;
+  --bg-1: #1a1d29;
+  --bg-2: #232736;
+  --bg-3: #2d3245;
+  --border: #3a3f56;
+  --text-0: #e8eaf2;
+  --text-1: #a6acc4;
+  --text-2: #6b7191;
+  --accent: #6c7bff;
+  --accent-hover: #8591ff;
+  --green: #4ade80;
+  --red: #f87171;
+  --yellow: #fbbf24;
+  font-family: "Noto Sans CJK SC", "PingFang SC", "Microsoft YaHei",
+    system-ui, sans-serif;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg-0);
+  color: var(--text-0);
+  font-size: 14px;
+  user-select: none;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--bg-3);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+button {
+  font: inherit;
+  border: 1px solid var(--border);
+  background: var(--bg-2);
+  color: var(--text-0);
+  border-radius: 6px;
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+button:hover {
+  background: var(--bg-3);
+  border-color: var(--accent);
+}
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+button.primary:hover {
+  background: var(--accent-hover);
+}
+button.danger {
+  border-color: var(--red);
+  color: var(--red);
+}
+button.danger:hover {
+  background: rgba(248, 113, 113, 0.12);
+}
+
+input[type="text"],
+input[type="number"],
+select {
+  font: inherit;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  color: var(--text-0);
+  border-radius: 6px;
+  padding: 6px 10px;
+  outline: none;
+  user-select: text;
+}
+input:focus,
+select:focus {
+  border-color: var(--accent);
+}

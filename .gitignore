@@ -1,0 +1,64 @@
+# ---- 引擎源码（外部上游仓库，不纳入版本控制）----
+# 本项目的动态壁纸渲染能力依赖 Almamu/linux-wallpaperengine。
+# 它是独立的 GPLv3 项目，通过 scripts/build-engine.sh 自动克隆 + 打补丁构建，
+# 因此源码目录不进本仓库（体积 388MB，且含 .git 与 build 产物）。
+/linux-wallpaperengine/
+
+# ---- 前端 ----
+node_modules/
+dist/
+dist-ssr/
+*.local
+.vite/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ---- Rust / Tauri ----
+target/
+**/gen/schemas/
+gen/schemas/
+
+# ---- 构建与安装产物 ----
+*.deb
+*.AppImage
+*.rpm
+*.so
+*.so.*
+*.dylib
+*.dll
+*.exe
+*.o
+*.a
+*.rlib
+*.rmeta
+*.d
+
+# ---- 编辑器 / IDE ----
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# ---- 临时文件与调试残留 ----
+*.log
+tmp/
+temp/
+.cache/
+*.tmp
+*.bak
+*.orig
+*.rej
+.tmp_*
+
+# ---- 本地离线依赖前缀（无 root 时 dpkg -x 解包出来的 mpv/ffmpeg 开发包）----
+/opt/
+/wedev/
+
+# ---- 环境与密钥 ----
+.env
+.env.*
+!.env.example

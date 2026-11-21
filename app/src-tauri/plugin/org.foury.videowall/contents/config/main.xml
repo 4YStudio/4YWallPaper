@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kcfg xmlns="http://www.kde.org/standards/kcfg/1.0"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.kde.org/standards/kcfg/1.0
+      http://www.kde.org/standards/kcfg/1.0/kcfg.xsd">
+  <kcfgfile name=""/>
+  <group name="General">
+    <entry name="videoPath" type="String">
+      <label>Video file to play as wallpaper</label>
+      <default></default>
+    </entry>
+    <entry name="audioEnabled" type="Bool">
+      <label>Play audio</label>
+      <default>false</default>
+    </entry>
+    <entry name="volume" type="Double">
+      <label>Volume (0.0 - 1.0)</label>
+      <default>0.5</default>
+    </entry>
+    <entry name="fillMode" type="Int">
+      <label>Sizing of the video</label>
+      <default>1</default>
+    </entry>
+    <entry name="paused" type="Bool">
+      <label>Pause playback</label>
+      <default>false</default>
+    </entry>
+    <entry name="muteOnMaximized" type="Bool">
+      <label>Mute while a window is maximized</label>
+      <default>true</default>
+    </entry>
+  </group>
+</kcfg>

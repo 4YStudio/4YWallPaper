@@ -1,0 +1,15 @@
+{
+    "KPackageStructure": "Plasma/Wallpaper",
+    "KPlugin": {
+        "Id": "org.foury.videowall",
+        "License": "MIT",
+        "Name": "4Y Video Wallpaper",
+        "Name[zh_CN]": "4Y 动态壁纸",
+        "Description": "Plays a video as the desktop wallpaper. Icons stay visible on top of the video.",
+        "Description[zh_CN]": "把视频作为桌面壁纸播放，桌面图标与文字始终显示在视频之上。",
+        "Version": "1.1",
+        "Icon": "preferences-desktop-wallpaper"
+    },
+    "X-KDE-ParentApp": "org.kde.plasmashell",
+    "X-Plasma-API-Minimum-Version": "6.0"
+}

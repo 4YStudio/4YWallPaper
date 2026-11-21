@@ -1,0 +1,343 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 3de95de..4d03eb1 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -44,6 +44,11 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+ set(KISSFFT_TEST OFF)
+ set(KISSFFT_TOOLS OFF)
+ 
++# Web (CEF) wallpaper support is optional: the CEF binary distribution is a huge
++# download that is not available everywhere (e.g. behind restricted networks).
++# Video and scene wallpapers do not need it at runtime.
++option(WPENGINE_ENABLE_WEB "Build web (CEF) wallpaper support" ON)
++
+ # Download CEF of specified version for current platform
+ # Specify the CEF distribution version.
+ set(CEF_VERSION "135.0.17+gcbc1c5b+chromium-135.0.7049.52")
+@@ -109,14 +114,19 @@ endif()
+ if(CEF_DISTRIBUTION_TYPE AND NOT CEF_DISTRIBUTION_TYPE STREQUAL "standard")
+     set(CEF_PLATFORM "${CEF_PLATFORM}_${CEF_DISTRIBUTION_TYPE}")
+ endif()
+-message(STATUS "Using CEF for ${CMAKE_SYSTEM_NAME} - ${CEF_PLATFORM} (${CEF_ARCH_DETECTION})")
+ include(DownloadCEF)
+-DownloadCEF("${CEF_PLATFORM}" "${CEF_VERSION}" "${CMAKE_CURRENT_BINARY_DIR}/cef")
+ 
+-# add cef's cmake files to the lookup so we can use those directly
+-list(APPEND CMAKE_MODULE_PATH "${CEF_ROOT}/cmake")
++if(WPENGINE_ENABLE_WEB)
++    message(STATUS "Using CEF for ${CMAKE_SYSTEM_NAME} - ${CEF_PLATFORM} (${CEF_ARCH_DETECTION})")
++    DownloadCEF("${CEF_PLATFORM}" "${CEF_VERSION}" "${CMAKE_CURRENT_BINARY_DIR}/cef")
+ 
+-find_package(CEF REQUIRED)
++    # add cef's cmake files to the lookup so we can use those directly
++    list(APPEND CMAKE_MODULE_PATH "${CEF_ROOT}/cmake")
++
++    find_package(CEF REQUIRED)
++else()
++    message(STATUS "CEF support disabled (WPENGINE_ENABLE_WEB=OFF): web wallpapers will not be available")
++endif()
+ 
+ # remove some switches that forbid us from using things that are commonplace in our codebase
+ list(REMOVE_ITEM CEF_CXX_COMPILER_FLAGS -fno-exceptions)
+@@ -140,7 +150,9 @@ set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
+ set(CMAKE_INSTALL_RPATH "\$ORIGIN;\$ORIGIN/lib;\$ORIGIN/lib64")
+ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH FALSE)
+ 
+-add_subdirectory(${CEF_LIBCEF_DLL_WRAPPER_PATH} libcef_dll_wrapper)
++if(WPENGINE_ENABLE_WEB)
++    add_subdirectory(${CEF_LIBCEF_DLL_WRAPPER_PATH} libcef_dll_wrapper)
++endif()
+ add_subdirectory(src/External/glslang-WallpaperEngine glslang)
+ add_subdirectory(src/External/SPIRV-Cross-WallpaperEngine spirv-cross)
+ add_subdirectory(src/External/kissfft kissfft)
+@@ -253,12 +265,14 @@ if(NOT WAYLAND_SUPPORT_FOUND AND NOT X11_SUPPORT_FOUND)
+     message(WARNING "No window server detected at build time. You will only be able to preview backgrounds")
+ endif()
+ 
+-add_library(ceflib SHARED IMPORTED)
+-set_target_properties(ceflib
+-        PROPERTIES IMPORTED_LOCATION ${TARGET_OUTPUT_DIRECTORY}/libcef.so)
++if(WPENGINE_ENABLE_WEB)
++    add_library(ceflib SHARED IMPORTED)
++    set_target_properties(ceflib
++            PROPERTIES IMPORTED_LOCATION ${TARGET_OUTPUT_DIRECTORY}/libcef.so)
+ 
+-ADD_LOGICAL_TARGET(libcef_lib "${CEF_LIB_DEBUG}" "${CEF_LIB_RELEASE}")
+-PRINT_CEF_CONFIG()
++    ADD_LOGICAL_TARGET(libcef_lib "${CEF_LIB_DEBUG}" "${CEF_LIB_RELEASE}")
++    PRINT_CEF_CONFIG()
++endif()
+ 
+ # Embed scene-script builtins (builtins.js) into a generated header, so the JS can
+ # live in its own file (lint/syntax-highlight friendly) instead of an inline literal.
+@@ -418,8 +432,6 @@ set(COMMON_SOURCES
+     src/WallpaperEngine/Render/Wallpapers/CScene.cpp
+     src/WallpaperEngine/Render/Wallpapers/CVideo.h
+     src/WallpaperEngine/Render/Wallpapers/CVideo.cpp
+-    src/WallpaperEngine/Render/Wallpapers/CWeb.h
+-    src/WallpaperEngine/Render/Wallpapers/CWeb.cpp
+     src/WallpaperEngine/Render/Camera.h
+     src/WallpaperEngine/Render/Camera.cpp
+     src/WallpaperEngine/Render/CObject.h
+@@ -446,21 +458,6 @@ set(COMMON_SOURCES
+     src/WallpaperEngine/Render/Objects/Effects/CPass.h
+     src/WallpaperEngine/Render/Objects/Effects/CPass.cpp
+ 
+-    src/WallpaperEngine/WebBrowser/CEF/RenderHandler.cpp
+-    src/WallpaperEngine/WebBrowser/CEF/RenderHandler.h
+-    src/WallpaperEngine/WebBrowser/CEF/BrowserClient.cpp
+-    src/WallpaperEngine/WebBrowser/CEF/BrowserClient.h
+-    src/WallpaperEngine/WebBrowser/CEF/BrowserApp.cpp
+-    src/WallpaperEngine/WebBrowser/CEF/BrowserApp.h
+-    src/WallpaperEngine/WebBrowser/CEF/SubprocessApp.cpp
+-    src/WallpaperEngine/WebBrowser/CEF/SubprocessApp.h
+-    src/WallpaperEngine/WebBrowser/CEF/WPSchemeHandlerFactory.cpp
+-    src/WallpaperEngine/WebBrowser/CEF/WPSchemeHandlerFactory.h
+-    src/WallpaperEngine/WebBrowser/CEF/WPSchemeHandler.cpp
+-    src/WallpaperEngine/WebBrowser/CEF/WPSchemeHandler.h
+-    src/WallpaperEngine/WebBrowser/WebBrowserContext.cpp
+-    src/WallpaperEngine/WebBrowser/WebBrowserContext.h
+-
+     src/WallpaperEngine/Data/Assets/Types.h
+     src/WallpaperEngine/Data/Assets/Texture.h
+     src/WallpaperEngine/Data/Assets/Package.h
+@@ -550,6 +547,27 @@ set(COMMON_SOURCES
+     src/WallpaperEngine/Maths.h
+     src/WallpaperEngine/Maths.cpp)
+ 
++if(WPENGINE_ENABLE_WEB)
++    list(APPEND COMMON_SOURCES
++        src/WallpaperEngine/Render/Wallpapers/CWeb.h
++        src/WallpaperEngine/Render/Wallpapers/CWeb.cpp
++
++        src/WallpaperEngine/WebBrowser/CEF/RenderHandler.cpp
++        src/WallpaperEngine/WebBrowser/CEF/RenderHandler.h
++        src/WallpaperEngine/WebBrowser/CEF/BrowserClient.cpp
++        src/WallpaperEngine/WebBrowser/CEF/BrowserClient.h
++        src/WallpaperEngine/WebBrowser/CEF/BrowserApp.cpp
++        src/WallpaperEngine/WebBrowser/CEF/BrowserApp.h
++        src/WallpaperEngine/WebBrowser/CEF/SubprocessApp.cpp
++        src/WallpaperEngine/WebBrowser/CEF/SubprocessApp.h
++        src/WallpaperEngine/WebBrowser/CEF/WPSchemeHandlerFactory.cpp
++        src/WallpaperEngine/WebBrowser/CEF/WPSchemeHandlerFactory.h
++        src/WallpaperEngine/WebBrowser/CEF/WPSchemeHandler.cpp
++        src/WallpaperEngine/WebBrowser/CEF/WPSchemeHandler.h
++        src/WallpaperEngine/WebBrowser/WebBrowserContext.cpp
++        src/WallpaperEngine/WebBrowser/WebBrowserContext.h)
++endif()
++
+ if(BUILD_TESTING)
+     add_executable(
+         tests
+@@ -595,11 +613,13 @@ target_link_libraries (linux-wallpaperengine-lib PUBLIC
+     spirv-cross-core
+     spirv-cross-glsl
+     glfw
+-    libcef_lib
+-    libcef_dll_wrapper
+     argparse
+     qjs)
+ 
++if(WPENGINE_ENABLE_WEB)
++    target_link_libraries(linux-wallpaperengine-lib PUBLIC libcef_lib libcef_dll_wrapper)
++endif()
++
+ if (BUILD_TESTING)
+     target_link_libraries (tests PRIVATE
+         Catch2::Catch2WithMain
+@@ -621,10 +641,12 @@ if (BUILD_TESTING)
+         spirv-cross-core
+         spirv-cross-glsl
+         glfw
+-        libcef_lib
+-        libcef_dll_wrapper
+         argparse
+         qjs)
++
++    if(WPENGINE_ENABLE_WEB)
++        target_link_libraries(tests PRIVATE libcef_lib libcef_dll_wrapper)
++    endif()
+ endif()
+ 
+ target_compile_definitions(linux-wallpaperengine-lib PUBLIC ERRORONLY=${ERRORONLY})
+@@ -674,17 +696,27 @@ target_include_directories(linux-wallpaperengine-lib PUBLIC
+     ${X11_INCLUDES}
+     ${WAYLAND_OUTPUT_DIR})
+ 
+-COPY_FILES(linux-wallpaperengine-lib "${CEF_BINARY_FILES}" "${CEF_BINARY_DIR}" "${TARGET_OUTPUT_DIRECTORY}")
+-COPY_FILES(linux-wallpaperengine-lib "${CEF_RESOURCE_FILES}" "${CEF_RESOURCE_DIR}" "${TARGET_OUTPUT_DIRECTORY}")
+-# remove the vulkan lib as chromium includes a broken libvulkan.so.1 with it
+-file(REMOVE "${CEF_BINARY_DIR}/libvulkan.so.1")
++if(WPENGINE_ENABLE_WEB)
++    COPY_FILES(linux-wallpaperengine-lib "${CEF_BINARY_FILES}" "${CEF_BINARY_DIR}" "${TARGET_OUTPUT_DIRECTORY}")
++    COPY_FILES(linux-wallpaperengine-lib "${CEF_RESOURCE_FILES}" "${CEF_RESOURCE_DIR}" "${TARGET_OUTPUT_DIRECTORY}")
++    # remove the vulkan lib as chromium includes a broken libvulkan.so.1 with it
++    file(REMOVE "${CEF_BINARY_DIR}/libvulkan.so.1")
++endif()
+ set_target_properties(linux-wallpaperengine-lib PROPERTIES
+     LIBRARY_OUTPUT_DIRECTORY ${TARGET_OUTPUT_DIRECTORY})
+ 
+-add_dependencies(linux-wallpaperengine-lib libcef_dll_wrapper glslang spirv-cross-core spirv-cross-glsl)
++if(WPENGINE_ENABLE_WEB)
++    add_dependencies(linux-wallpaperengine-lib libcef_dll_wrapper glslang spirv-cross-core spirv-cross-glsl)
++else()
++    add_dependencies(linux-wallpaperengine-lib glslang spirv-cross-core spirv-cross-glsl)
++endif()
+ # custom version of cef's SET_EXECUTABLE_TARGET_PROPERTIES that fixes C files being compiled with the wrong parameters
+ REPLACED_SET_EXECUTABLE_TARGET_PROPERTIES(linux-wallpaperengine-lib)
+ 
++if(WPENGINE_ENABLE_WEB)
++    target_compile_definitions(linux-wallpaperengine-lib PUBLIC WPENGINE_ENABLE_WEB=1)
++endif()
++
+ add_executable(linux-wallpaperengine
+     src/main.cpp)
+ 
+diff --git a/src/WallpaperEngine/Application/WallpaperApplication.cpp b/src/WallpaperEngine/Application/WallpaperApplication.cpp
+index c9107af..b10b183 100644
+--- a/src/WallpaperEngine/Application/WallpaperApplication.cpp
++++ b/src/WallpaperEngine/Application/WallpaperApplication.cpp
+@@ -320,6 +320,7 @@ void WallpaperApplication::initializePlaylists () {
+ }
+ 
+ void WallpaperApplication::ensureBrowserForProject (const Project& project) {
++#ifdef WPENGINE_ENABLE_WEB
+     if (!project.wallpaper->is<Web> ()) {
+ 	return;
+     }
+@@ -327,6 +328,11 @@ void WallpaperApplication::ensureBrowserForProject (const Project& project) {
+     if (!this->m_browserContext) {
+ 	this->m_browserContext = std::make_unique<WebBrowser::WebBrowserContext> (*this);
+     }
++#else
++    if (project.wallpaper->is<Web> ()) {
++	sLog.error ("Web wallpapers are not supported by this build (compiled without CEF support)");
++    }
++#endif /* WPENGINE_ENABLE_WEB */
+ }
+ 
+ bool WallpaperApplication::makeAnyViewportCurrent () const {
+@@ -451,7 +457,7 @@ void WallpaperApplication::advancePlaylist (
+ 		screen,
+ 		WallpaperEngine::Render::CWallpaper::fromWallpaper (
+ 		    *this->m_backgrounds[screen]->wallpaper, *this->m_renderContext, *this->m_audioContext,
+-		    this->m_browserContext.get (), scaling, clamp
++		    this->getBrowserContext (), scaling, clamp
+ 		)
+ 	    );
+ 	}
+@@ -524,6 +530,7 @@ void WallpaperApplication::setupProperties () {
+ }
+ 
+ void WallpaperApplication::setupBrowser () {
++#ifdef WPENGINE_ENABLE_WEB
+     bool anyWebProject = std::any_of (
+ 	this->m_backgrounds.begin (), this->m_backgrounds.end (),
+ 	[] (const std::pair<const std::string, ProjectUniquePtr>& pair) -> bool {
+@@ -537,6 +544,7 @@ void WallpaperApplication::setupBrowser () {
+     }
+ 
+     this->m_browserContext = std::make_unique<WebBrowser::WebBrowserContext> (*this);
++#endif /* WPENGINE_ENABLE_WEB */
+ }
+ 
+ void WallpaperApplication::takeScreenshot (const std::filesystem::path& filename) const {
+@@ -742,7 +750,7 @@ void WallpaperApplication::prepareOutputs () {
+ 	m_renderContext->setWallpaper (
+ 	    background,
+ 	    WallpaperEngine::Render::CWallpaper::fromWallpaper (
+-		*info->wallpaper, *m_renderContext, *m_audioContext, m_browserContext.get (), scaling, clamp
++		*info->wallpaper, *m_renderContext, *m_audioContext, this->getBrowserContext (), scaling, clamp
+ 	    )
+ 	);
+     }
+@@ -800,7 +808,7 @@ void WallpaperApplication::prepareOutputs () {
+ 
+ 	// Create one shared wallpaper with the span group's scaling mode
+ 	auto sharedWallpaper = WallpaperEngine::Render::CWallpaper::fromWallpaper (
+-	    *bgIt->second->wallpaper, *m_renderContext, *m_audioContext, m_browserContext.get (), spanGroup.scaling,
++	    *bgIt->second->wallpaper, *m_renderContext, *m_audioContext, this->getBrowserContext (), spanGroup.scaling,
+ 	    spanGroup.clamp
+ 	);
+ 
+diff --git a/src/WallpaperEngine/Application/WallpaperApplication.h b/src/WallpaperEngine/Application/WallpaperApplication.h
+index 1d1302a..377cadd 100644
+--- a/src/WallpaperEngine/Application/WallpaperApplication.h
++++ b/src/WallpaperEngine/Application/WallpaperApplication.h
+@@ -15,13 +15,19 @@
+ #include "WallpaperEngine/Audio/Drivers/SDLAudioDriver.h"
+ 
+ #include "WallpaperEngine/Input/InputContext.h"
++#ifdef WPENGINE_ENABLE_WEB
+ #include "WallpaperEngine/WebBrowser/WebBrowserContext.h"
++#endif
+ 
+ #include "WallpaperEngine/Data/Model/Types.h"
+ #include "WallpaperEngine/Media/MediaSource.h"
+ 
+ #include <set>
+ 
++namespace WallpaperEngine::WebBrowser {
++class WebBrowserContext;
++}
++
+ namespace WallpaperEngine::Application {
+ 
+ using namespace WallpaperEngine::Assets;
+@@ -160,6 +166,16 @@ private:
+     std::vector<std::size_t> buildPlaylistOrder (const ApplicationContext::PlaylistDefinition& definition);
+     void ensureBrowserForProject (const Project& project);
+     bool makeAnyViewportCurrent () const;
++    /**
++     * Returns the browser context, or nullptr when this build has no web support
++     */
++    WallpaperEngine::WebBrowser::WebBrowserContext* getBrowserContext () const {
++#ifdef WPENGINE_ENABLE_WEB
++	return this->m_browserContext.get ();
++#else
++	return nullptr;
++#endif
++    }
+ 
+     /** The application context that contains the current app settings */
+     ApplicationContext& m_context;
+@@ -174,8 +190,10 @@ private:
+     std::unique_ptr<WallpaperEngine::Render::RenderContext> m_renderContext = nullptr;
+     std::unique_ptr<WallpaperEngine::Render::Drivers::VideoDriver> m_videoDriver = nullptr;
+     std::unique_ptr<WallpaperEngine::Render::Drivers::Detectors::FullScreenDetector> m_fullScreenDetector = nullptr;
+-    std::unique_ptr<WallpaperEngine::WebBrowser::WebBrowserContext> m_browserContext = nullptr;
+     std::unique_ptr<WallpaperEngine::Media::MediaSource> m_mediaSource = nullptr;
++#ifdef WPENGINE_ENABLE_WEB
++    std::unique_ptr<WallpaperEngine::WebBrowser::WebBrowserContext> m_browserContext = nullptr;
++#endif
+     std::mt19937 m_playlistRng { std::random_device {}() };
+     bool m_isPaused = false;
+     bool m_screenShotTaken = false;
+diff --git a/src/WallpaperEngine/Render/CWallpaper.cpp b/src/WallpaperEngine/Render/CWallpaper.cpp
+index d0f7eab..4095ce3 100644
+--- a/src/WallpaperEngine/Render/CWallpaper.cpp
++++ b/src/WallpaperEngine/Render/CWallpaper.cpp
+@@ -2,7 +2,9 @@
+ #include "WallpaperEngine/Logging/Log.h"
+ #include "WallpaperEngine/Render/Wallpapers/CScene.h"
+ #include "WallpaperEngine/Render/Wallpapers/CVideo.h"
++#ifdef WPENGINE_ENABLE_WEB
+ #include "WallpaperEngine/Render/Wallpapers/CWeb.h"
++#endif
+ 
+ #include "WallpaperEngine/Data/Model/Project.h"
+ #include "WallpaperEngine/Data/Model/Wallpaper.h"
+@@ -356,9 +358,13 @@ std::unique_ptr<CWallpaper> CWallpaper::fromWallpaper (
+     }
+ 
+     if (wallpaper.is<Web> ()) {
++#ifdef WPENGINE_ENABLE_WEB
+ 	return std::make_unique<WallpaperEngine::Render::Wallpapers::CWeb> (
+ 	    wallpaper, context, audioContext, *browserContext, scalingMode, clampMode
+ 	);
++#else
++	sLog.exception ("Web wallpapers are not supported by this build (compiled without CEF support)");
++#endif /* WPENGINE_ENABLE_WEB */
+     }
+ 
+     sLog.exception ("Unsupported wallpaper type");
