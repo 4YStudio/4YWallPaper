@@ -26,7 +26,9 @@
         "enable": true,
         "scope": [
           "$HOME/.local/share/4ywallpaper/library/**",
-          "$DATA/4ywallpaper/library/**"
+          "$DATA/4ywallpaper/library/**",
+          "$HOME/.local/share/4ywallpaper/thumbs/**",
+          "$DATA/4ywallpaper/thumbs/**"
         ]
       }
     }

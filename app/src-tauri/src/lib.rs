@@ -29,6 +29,24 @@ fn delete_wallpaper(id: String) -> Result<(), String> {
     library::delete_wallpaper(&id)
 }
 
+/// 登记一个外部壁纸目录（直接引用，不复制文件）
+#[tauri::command]
+fn add_source_dir(path: String) -> Result<Vec<String>, String> {
+    library::add_source_dir(&path)
+}
+
+/// 取消引用外部壁纸目录
+#[tauri::command]
+fn remove_source_dir(path: String) -> Result<Vec<String>, String> {
+    library::remove_source_dir(&path)
+}
+
+/// 当前已引用的外部壁纸目录
+#[tauri::command]
+fn list_source_dirs() -> Vec<String> {
+    config::load().settings.source_dirs
+}
+
 #[tauri::command]
 fn list_monitors() -> Result<Vec<monitors::KScreenOutput>, String> {
     match monitors::list_monitors() {
@@ -108,11 +126,15 @@ pub struct MonitorAssignmentInput {
 fn stop_all_engines() {
     // 两种后端都要停：layer-shell 引擎进程 + Plasma 插件壁纸
     engine::stop_all_engines();
-    let cfg = config::load();
+    let mut cfg = config::load();
     if cfg.settings.use_plasma() {
         for a in &cfg.assignments {
             let _ = plasma::clear_screen(&a.monitor);
         }
+        // 同时清掉配置里的分配：否则下次给别的屏设壁纸时，
+        // 这里被停掉的屏会被重新写入并跟着启动
+        cfg.assignments.clear();
+        let _ = config::save(&cfg);
     }
 }
 
@@ -120,6 +142,13 @@ fn stop_all_engines() {
 fn stop_engine(monitor: String) {
     engine::stop_engine_by_monitor(&monitor);
     let _ = plasma::clear_screen(&monitor);
+    // 同上：把这块屏的分配从配置里移除，避免下次 apply 时被顺带唤醒
+    let mut cfg = config::load();
+    let before = cfg.assignments.len();
+    cfg.assignments.retain(|a| a.monitor != monitor);
+    if cfg.assignments.len() != before {
+        let _ = config::save(&cfg);
+    }
 }
 
 #[tauri::command]
@@ -224,11 +253,35 @@ fn open_folder(path: String) -> Result<(), String> {
     Ok(())
 }
 
+/// `--list`：以 JSON 打印壁纸库扫描结果（排查「为什么绑定不上」时很有用）
+pub fn run_list() {
+    match library::list_wallpapers() {
+        Ok(list) => match serde_json::to_string_pretty(&list) {
+            Ok(s) => println!("{s}"),
+            Err(e) => {
+                eprintln!("4ywallpaper: 序列化失败: {e}");
+                std::process::exit(1);
+            }
+        },
+        Err(e) => {
+            eprintln!("4ywallpaper: 扫描失败: {e}");
+            std::process::exit(1);
+        }
+    }
+}
+
+/// 同步补齐所有缺失的缩略图：`fourywallpaper --thumbs`
+pub fn run_thumbs() {
+    let made = library::generate_missing_thumbnails();
+    println!("已生成 {made} 个缩略图，缓存目录: {}", config::thumbs_dir().display());
+}
+
 /// 一次性应用配置（不开 GUI）：`fourywallpaper --apply`
 /// 便于脚本调用、排查问题，以及在没有图形界面时重新应用壁纸。
 pub fn run_apply_once() {
     let cfg = config::load();
-    if cfg.assignments.is_empty() {
+    // 分配为空不再直接报错：plasma 后端需要跑一次才能把残留的屏复位成静态壁纸
+    if cfg.assignments.is_empty() && !cfg.settings.use_plasma() {
         eprintln!("4ywallpaper: 没有壁纸分配，请先在 GUI 里选择壁纸");
         std::process::exit(1);
     }
@@ -286,6 +339,9 @@ pub fn run() {
             import_video,
             import_folder,
             delete_wallpaper,
+            add_source_dir,
+            remove_source_dir,
+            list_source_dirs,
             list_monitors,
             get_config,
             save_config,

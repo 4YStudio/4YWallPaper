@@ -34,6 +34,8 @@ pub struct Settings {
     pub backend: String,
     /// 应用后是否自动重启 plasmashell（使 QML 缓存失效）
     pub restart_shell: bool,
+    /// 外部壁纸目录：直接引用这些目录里的视频 / project.json 文件夹，不复制进库
+    pub source_dirs: Vec<String>,
 }
 
 impl Default for Settings {
@@ -52,6 +54,7 @@ impl Default for Settings {
             autostart: false,
             backend: "plasma".into(),
             restart_shell: true,
+            source_dirs: Vec::new(),
         }
     }
 }
@@ -90,6 +93,14 @@ pub fn library_dir() -> PathBuf {
         .unwrap_or_else(|| PathBuf::from(".local/share"))
         .join(APP_DIR_NAME)
         .join("library")
+}
+
+/// 外部壁纸缩略图缓存目录（不污染用户的原目录）
+pub fn thumbs_dir() -> PathBuf {
+    dirs::data_dir()
+        .unwrap_or_else(|| PathBuf::from(".local/share"))
+        .join(APP_DIR_NAME)
+        .join("thumbs")
 }
 
 /// 引擎日志目录（引擎进程自己写文件，GUI 退出后不影响引擎）

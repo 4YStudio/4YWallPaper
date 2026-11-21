@@ -1,23 +1,24 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from "vue";
-import LibraryView from "./views/LibraryView.vue";
-import MonitorView from "./views/MonitorView.vue";
+import WallpaperView from "./views/WallpaperView.vue";
 import SettingsView from "./views/SettingsView.vue";
 import LogView from "./views/LogView.vue";
+import Icon from "./components/Icon.vue";
+import type { IconName } from "./components/icon-names";
+import logoUrl from "./assets/logo.svg";
 import { plasmaStatus, stopAll } from "./api";
 import type { PlasmaStatus } from "./types";
 
-type Tab = "library" | "monitor" | "settings" | "logs";
+type Tab = "wallpaper" | "settings" | "logs";
 
-const tab = ref<Tab>("library");
+const tab = ref<Tab>("wallpaper");
 const status = ref<PlasmaStatus | null>(null);
 let timer: number | undefined;
 
-const tabs: { key: Tab; label: string; icon: string }[] = [
-  { key: "library", label: "壁纸库", icon: "🖼️" },
-  { key: "monitor", label: "显示器", icon: "🖥️" },
-  { key: "settings", label: "设置", icon: "⚙️" },
-  { key: "logs", label: "日志", icon: "📜" },
+const tabs: { key: Tab; label: string; icon: IconName }[] = [
+  { key: "wallpaper", label: "壁纸", icon: "gallery" },
+  { key: "settings", label: "设置", icon: "settings" },
+  { key: "logs", label: "日志", icon: "logs" },
 ];
 
 const activeCount = computed(() => status.value?.active_screens.length ?? 0);
@@ -46,8 +47,11 @@ onUnmounted(() => window.clearInterval(timer));
   <div class="layout">
     <aside class="sidebar">
       <div class="brand">
-        <div class="brand-icon">4Y</div>
-        <div class="brand-name">4YWallPaper</div>
+        <img class="brand-logo" :src="logoUrl" alt="" />
+        <div class="brand-text">
+          <div class="brand-name">4YWallPaper</div>
+          <div class="brand-sub">动态壁纸</div>
+        </div>
       </div>
       <nav>
         <button
@@ -57,27 +61,26 @@ onUnmounted(() => window.clearInterval(timer));
           :class="{ active: tab === t.key }"
           @click="tab = t.key"
         >
-          <span class="nav-icon">{{ t.icon }}</span>
+          <Icon :name="t.icon" :size="17" />
           <span>{{ t.label }}</span>
         </button>
       </nav>
       <div class="sidebar-footer">
         <div class="run-state" :class="{ on: activeCount > 0 }">
           <span class="dot"></span>
-          {{ activeCount > 0 ? `${activeCount} 屏动态壁纸运行中` : "无运行中壁纸" }}
+          {{ activeCount > 0 ? `${activeCount} 屏运行中` : "无运行中壁纸" }}
         </div>
         <button
           class="danger full"
           :disabled="activeCount === 0"
           @click="onStopAll"
         >
-          停止全部
+          <Icon name="stop" :size="13" /> 停止全部
         </button>
       </div>
     </aside>
     <main class="content">
-      <LibraryView v-if="tab === 'library'" @refresh-status="refreshStatus" />
-      <MonitorView v-else-if="tab === 'monitor'" @refresh-status="refreshStatus" />
+      <WallpaperView v-if="tab === 'wallpaper'" @refresh-status="refreshStatus" />
       <SettingsView v-else-if="tab === 'settings'" />
       <LogView v-else />
     </main>
@@ -90,7 +93,7 @@ onUnmounted(() => window.clearInterval(timer));
   height: 100%;
 }
 .sidebar {
-  width: 200px;
+  width: 196px;
   flex-shrink: 0;
   background: var(--bg-1);
   border-right: 1px solid var(--border);
@@ -101,28 +104,32 @@ onUnmounted(() => window.clearInterval(timer));
 .brand {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 4px 8px 16px;
+  gap: 9px;
+  padding: 2px 6px 16px;
 }
-.brand-icon {
-  width: 34px;
-  height: 34px;
+.brand-logo {
+  width: 32px;
+  height: 32px;
   border-radius: 8px;
-  background: var(--accent);
-  color: #fff;
-  font-weight: 700;
-  display: grid;
-  place-items: center;
-  font-size: 13px;
+  display: block;
+}
+.brand-text {
+  min-width: 0;
 }
 .brand-name {
   font-weight: 600;
-  font-size: 15px;
+  font-size: 14px;
+  line-height: 1.25;
+}
+.brand-sub {
+  font-size: 11px;
+  color: var(--text-2);
+  line-height: 1.3;
 }
 nav {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
 }
 .nav-btn {
   display: flex;
@@ -133,17 +140,16 @@ nav {
   border-color: transparent;
   padding: 9px 12px;
   border-radius: 8px;
+  color: var(--text-1);
 }
 .nav-btn:hover {
   background: var(--bg-2);
   border-color: transparent;
+  color: var(--text-0);
 }
 .nav-btn.active {
   background: var(--bg-3);
   color: var(--accent-hover);
-}
-.nav-icon {
-  font-size: 15px;
 }
 .sidebar-footer {
   margin-top: auto;
@@ -174,10 +180,14 @@ nav {
 }
 .full {
   width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 .content {
   flex: 1;
   overflow: auto;
-  padding: 22px 26px;
+  padding: 20px 24px;
 }
 </style>

@@ -11,7 +11,7 @@
 //! 2. 通过 Plasma 的 D-Bus 脚本接口把「哪块屏播哪个视频」写进桌面配置
 //! 3. 重启 plasmashell 让 QML 缓存失效（否则改配置不生效）
 
-use crate::config::{self, AppConfig};
+use crate::config::AppConfig;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -122,19 +122,9 @@ pub fn desktop_screen_map() -> Result<Vec<(u32, String)>, String> {
         .collect())
 }
 
-/// 壁纸库里的壁纸 ID → 实际视频文件绝对路径
+/// 壁纸库里的壁纸 ID → 实际视频文件绝对路径（库内 + 外部引用目录）
 pub fn resolve_video_path(wallpaper_id: &str) -> Option<PathBuf> {
-    let dir = config::library_dir().join(wallpaper_id);
-    let project = dir.join("project.json");
-    let content = fs::read_to_string(&project).ok()?;
-    let json: serde_json::Value = serde_json::from_str(&content).ok()?;
-    let file = json.get("file")?.as_str()?;
-    let path = dir.join(file);
-    if path.is_file() {
-        Some(path)
-    } else {
-        None
-    }
+    crate::library::resolve_video_path(wallpaper_id)
 }
 
 fn escape_js(s: &str) -> String {
@@ -186,6 +176,23 @@ n++; }}",
             volume = (cfg.settings.volume.unwrap_or(50) as f64 / 100.0).clamp(0.0, 1.0),
         ));
     }
+    // 没有分配壁纸的屏：如果它还在用我们的插件，就复位成静态壁纸。
+    // 不这么做的话，被「停止」过的屏 containment 里仍留着 wallpaperplugin=org.foury.videowall，
+    // 下次给别的屏设壁纸时会跟着一起启动。
+    for (screen_idx, output) in screen_map {
+        let has = cfg
+            .assignments
+            .iter()
+            .any(|a| &a.monitor == output && !a.wallpaper_id.is_empty());
+        if has {
+            continue;
+        }
+        lines.push(format!(
+            "for (var i = 0; i < ds.length; i++) {{ var d = ds[i]; \
+if (d.screen !== {screen_idx}) continue; \
+if (d.wallpaperPlugin === \"{PLUGIN_ID}\") {{ d.wallpaperPlugin = \"org.kde.image\"; }} }}"
+        ));
+    }
     lines.push("print(\"applied to \" + n + \" desktop(s)\");".to_string());
     lines.join("\n")
 }
@@ -218,7 +225,8 @@ pub fn apply(cfg: &AppConfig) -> Result<String, String> {
     }
     let script = build_script(cfg, &screen_map);
     let out = run_plasma_script(&script)?;
-    if out.contains("applied to 0") {
+    // 分配为空是合法的（把所有屏复位成静态壁纸），其余情况 0 匹配说明配置有问题
+    if out.contains("applied to 0") && !cfg.assignments.is_empty() {
         return Err(format!(
             "没有匹配到任何显示器，脚本输出: {out}（请确认已为显示器选择壁纸）"
         ));
@@ -235,6 +243,17 @@ pub fn restart_plasmashell() -> Result<(), String> {
         .status()
         .map_err(|e| format!("无法重启 plasmashell: {e}"))?;
     if status.success() {
+        return Ok(());
+    }
+    // 短时间反复重启会触发 systemd 的 start-limit，此时先 reset-failed 再启动
+    let _ = Command::new("systemctl")
+        .args(["--user", "reset-failed", "plasma-plasmashell"])
+        .status();
+    let retry = Command::new("systemctl")
+        .args(["--user", "start", "plasma-plasmashell"])
+        .status()
+        .map_err(|e| format!("无法启动 plasmashell: {e}"))?;
+    if retry.success() {
         Ok(())
     } else {
         Err(format!("重启 plasmashell 失败（退出码 {status}）"))

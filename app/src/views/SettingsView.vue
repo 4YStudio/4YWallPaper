@@ -2,11 +2,22 @@
 import { ref, onMounted } from "vue";
 import { getConfig, saveConfig, setAutostart, detectEngine, openFolder, plasmaStatus, installPlasmaPlugin, restartPlasma } from "../api";
 import type { Settings, PlasmaStatus } from "../types";
+import { open } from "@tauri-apps/plugin-dialog";
+import Icon from "../components/Icon.vue";
 
 const settings = ref<Settings | null>(null);
 const plasma = ref<PlasmaStatus | null>(null);
 const saving = ref(false);
 const msg = ref<string | null>(null);
+const msgKind = ref<"ok" | "err" | "warn">("ok");
+
+function flash(text: string, kind: "ok" | "err" | "warn" = "ok", ms = 6000) {
+  msg.value = text;
+  msgKind.value = kind;
+  window.setTimeout(() => {
+    if (msg.value === text) msg.value = null;
+  }, ms);
+}
 
 async function refresh() {
   const cfg = await getConfig();
@@ -18,37 +29,34 @@ async function onInstallPlugin() {
   try {
     const p = await installPlasmaPlugin();
     plasma.value = await plasmaStatus();
-    msg.value = `✅ 插件已安装到 ${p}`;
+    flash(`插件已安装到 ${p}`);
   } catch (e) {
-    msg.value = `❌ 安装失败: ${e}`;
+    flash(`安装失败: ${e}`, "err");
   }
-  setTimeout(() => (msg.value = null), 6000);
 }
 
 async function onRestartPlasma() {
   msg.value = "正在重启 plasmashell…";
+  msgKind.value = "ok";
   try {
     await restartPlasma();
-    msg.value = "✅ plasmashell 已重启";
+    flash("plasmashell 已重启");
   } catch (e) {
-    msg.value = `❌ 重启失败: ${e}`;
+    flash(`重启失败: ${e}`, "err");
   }
-  setTimeout(() => (msg.value = null), 6000);
 }
 
 async function onDetectEngine() {
   const p = await detectEngine();
   if (p && settings.value) {
     settings.value.engine_path = p;
-    msg.value = `✅ 已找到引擎: ${p}`;
+    flash(`已找到引擎: ${p}`);
   } else {
-    msg.value = "❌ 未找到 linux-wallpaperengine，请先构建引擎或手动指定路径";
+    flash("未找到 linux-wallpaperengine，请先构建引擎或手动指定路径", "err");
   }
-  setTimeout(() => (msg.value = null), 6000);
 }
 
 async function onPickEngine() {
-  const { open } = await import("@tauri-apps/plugin-dialog");
   const p = await open({
     multiple: false,
     title: "选择 linux-wallpaperengine 可执行文件",
@@ -59,7 +67,6 @@ async function onPickEngine() {
 }
 
 async function onPickAssets() {
-  const { open } = await import("@tauri-apps/plugin-dialog");
   const p = await open({
     multiple: false,
     directory: true,
@@ -86,12 +93,15 @@ async function onToggleAutostart(enable: boolean) {
   try {
     const ok = await setAutostart(enable);
     settings.value.autostart = ok;
-    msg.value = ok === enable ? (enable ? "✅ 已开启开机自启" : "已关闭开机自启") : "⚠️ 设置失败";
+    if (ok === enable) {
+      flash(enable ? "已开启开机自启" : "已关闭开机自启", "ok", 5000);
+    } else {
+      flash("设置失败", "warn", 5000);
+    }
   } catch (e) {
     settings.value.autostart = !enable;
-    msg.value = `⚠️ 设置失败: ${e}`;
+    flash(`设置失败: ${e}`, "warn", 5000);
   }
-  setTimeout(() => (msg.value = null), 5000);
 }
 
 function numOrNull(v: string): number | null {
@@ -111,7 +121,13 @@ onMounted(refresh);
         {{ saving ? "保存中…" : "保存设置" }}
       </button>
     </div>
-    <p v-if="msg" class="msg">{{ msg }}</p>
+    <p v-if="msg" class="msg" :class="msgKind">
+      <Icon
+        :name="msgKind === 'err' ? 'alert' : msgKind === 'warn' ? 'alert' : 'check'"
+        :size="14"
+      />
+      <span>{{ msg }}</span>
+    </p>
 
     <section>
       <h2>壁纸后端</h2>
@@ -323,11 +339,23 @@ section {
   height: 15px;
 }
 .msg {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin-bottom: 12px;
   padding: 8px 12px;
   border-radius: 6px;
   background: var(--bg-2);
   border: 1px solid var(--border);
+}
+.msg.ok :deep(.icon) {
+  color: var(--green);
+}
+.msg.err :deep(.icon) {
+  color: var(--red);
+}
+.msg.warn :deep(.icon) {
+  color: var(--yellow);
 }
 .hint {
   color: var(--text-2);

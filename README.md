@@ -22,6 +22,8 @@ scene/web 壁纸后端。
 ## 功能
 
 - 🖼️ **壁纸库管理**：本地视频（mp4/webm/mkv…）一键导入，自动生成 `project.json` + 缩略图
+- 📂 **外部壁纸目录**：直接引用已有壁纸文件夹（不复制、不占额外空间），裸视频与
+  Wallpaper Engine 文件夹自动识别，缩略图按需缓存
 - 🖥️ **多显示器**：通过 `kscreen-doctor` 枚举显示器，每屏独立分配壁纸与缩放模式
 - 🎬 **Plasma 壁纸插件**：随程序分发的 `org.foury.videowall` 插件，写入 Plasma 桌面配置
 - ⚙️ **播放控制**：缩放（裁剪填满 / 拉伸 / 完整显示）、音量、静音、开机自启
@@ -75,6 +77,27 @@ app/src-tauri/target/release/fourywallpaper --apply
 
 在 GUI 里：**壁纸库** 导入视频 → **显示器** 给每块屏选壁纸并点「应用到桌面」。
 应用后会自动重启 plasmashell（约 2 秒），视频壁纸立即生效。
+
+### 引用已有的壁纸文件夹（不复制）
+
+如果壁纸已经放在某个目录里（例如 `/home/you/文档/动态壁纸`），不用导入：
+
+1. **壁纸库** → **＋ 添加壁纸目录** → 选那个目录；
+2. 目录里的裸视频（`*.mp4/webm/mkv…`）和含 `project.json` 的壁纸文件夹会直接出现在列表里，
+   卡片左上角标「外部」；
+3. 缩略图由 ffmpeg 抽帧缓存到 `~/.local/share/4ywallpaper/thumbs/`，原目录不会被写入；
+4. 不想用了点目录右侧的 ✕ 取消引用（**不会删除任何文件**）。
+
+命令行等价操作：
+
+```bash
+# 查看扫描结果（JSON），排查「为什么绑定不上」
+fourywallpaper --list
+# 一次性补齐所有外部视频的缩略图
+fourywallpaper --thumbs
+```
+
+目录引用保存在 `~/.config/4ywallpaper/config.json` 的 `settings.source_dirs`。
 
 ## 构建引擎（可选，仅 scene/web 壁纸需要）
 

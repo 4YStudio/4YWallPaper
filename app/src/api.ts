@@ -25,6 +25,20 @@ export async function deleteWallpaper(id: string): Promise<void> {
   return invoke("delete_wallpaper", { id });
 }
 
+/** 登记外部壁纸目录（引用，不复制） */
+export async function addSourceDir(path: string): Promise<string[]> {
+  return invoke("add_source_dir", { path });
+}
+
+/** 取消引用外部壁纸目录 */
+export async function removeSourceDir(path: string): Promise<string[]> {
+  return invoke("remove_source_dir", { path });
+}
+
+export async function listSourceDirs(): Promise<string[]> {
+  return invoke("list_source_dirs");
+}
+
 export async function listMonitors(): Promise<Monitor[]> {
   return invoke("list_monitors");
 }

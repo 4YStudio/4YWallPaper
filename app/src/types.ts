@@ -13,6 +13,10 @@ export interface WallpaperEntry {
   size: number;
   /** project.json 支持的自定义属性列表 */
   properties: WallpaperProperty[];
+  /** library = 已复制进壁纸库；external = 引用外部目录 */
+  source: "library" | "external";
+  /** 实际视频文件绝对路径（外部目录条目靠它播放） */
+  video: string | null;
 }
 
 export interface WallpaperProperty {
@@ -68,6 +72,8 @@ export interface Settings {
   backend: "plasma" | "engine";
   /** 应用后自动重启 plasmashell（使 QML 缓存失效） */
   restart_shell: boolean;
+  /** 外部壁纸目录：直接引用，不复制进库 */
+  source_dirs: string[];
 }
 
 export interface MonitorAssignment {

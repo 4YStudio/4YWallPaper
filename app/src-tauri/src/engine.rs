@@ -242,11 +242,14 @@ pub fn build_engine_args(settings: &Settings, assignments: &[MonitorAssignment])
         }
     }
 
-    let library = crate::config::library_dir();
     for a in assignments {
         if a.wallpaper_id.is_empty() {
             continue;
         }
+        // 外部目录里的裸视频没有 project.json，引擎后端无法直接使用
+        let Some(bg_dir) = crate::library::resolve_bg_dir(&a.wallpaper_id) else {
+            continue;
+        };
         let scaling = if a.scaling.is_empty() {
             settings.scaling.clone()
         } else {
@@ -260,12 +263,7 @@ pub fn build_engine_args(settings: &Settings, assignments: &[MonitorAssignment])
             args.push(scaling);
         }
         args.push("--bg".into());
-        args.push(
-            library
-                .join(&a.wallpaper_id)
-                .to_string_lossy()
-                .to_string(),
-        );
+        args.push(bg_dir.to_string_lossy().to_string());
     }
     args
 }

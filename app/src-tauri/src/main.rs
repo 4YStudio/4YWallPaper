@@ -12,5 +12,15 @@ fn main() {
         fourywallpaper_lib::run_apply_once();
         return;
     }
+    // 打印壁纸库扫描结果（JSON），便于排查目录引用问题
+    if std::env::args().any(|a| a == "--list") {
+        fourywallpaper_lib::run_list();
+        return;
+    }
+    // 同步生成所有缺失的缩略图（不开 GUI）
+    if std::env::args().any(|a| a == "--thumbs") {
+        fourywallpaper_lib::run_thumbs();
+        return;
+    }
     fourywallpaper_lib::run();
 }
